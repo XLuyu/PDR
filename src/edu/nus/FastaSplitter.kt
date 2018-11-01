@@ -17,7 +17,7 @@ class FastaSplitter(val file: File) {
     }
     fun chopAndWriteFasta(binSize: Int, outfile: File):ArrayList<ChromInfo> {
         val chromNameSet = mutableSetOf<String>()
-        val pb = ProgressBar("Splitting Fasta ${file.name}", file.length())
+        val pb = ProgressBar("Breaking ${file.name}", file.length())
         val writer = outfile.writer()
         var name = ""
         var seq = StringBuilder()
