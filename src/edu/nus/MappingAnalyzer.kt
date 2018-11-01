@@ -110,14 +110,14 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<ChromInfo>) {
     fun run() {
         val records = bam.getAllByChrom()
         println("[Info] load ${records.size} appropriate mappings from SAM file")
-        for ( cid in records.indices){
-            println("[Info] chromosome ${refInfo[cid]} has ${records[cid].size} mapping segments " +
-                    "(%.2f%% covered)".format(records[cid].sumBy { it[0].binCount }.toDouble() * binSize * 100 / refInfo[cid].length))
+        for ( chrom in records){
+            println("[Info] chromosome ${refInfo[chrom[0].chrom]} has ${chrom.size} mapping segments " +
+                    "(%.2f%% covered)".format(chrom.sumBy { it[0].binCount }.toDouble() * binSize * 100 / refInfo[chrom[0].chrom].length))
         }
         val score = analyzeMappingByChrom(records)
         val totalPos = refInfo.sumByDouble { it.binCount*binSize.toDouble() }
-        println("Absolute Score: $score")
-        println("Ratio Score: ${score/(totalPos*totalPos)}")
+        println("[Success] Absolute Score: $score")
+        println("[Success] Ratio Score: ${score/(totalPos*totalPos)}")
     }
 
     private fun analyzeMappingByChrom(records: ArrayList<ArrayList<MappingSet>>):Double {
