@@ -24,6 +24,7 @@ class FastaSplitter(val file: File) {
         val list = ArrayList<ChromInfo>()
         file.bufferedReader().forEachLine {
             pb.stepBy(it.length.toLong() + 1)
+            if (it.isNotEmpty())
             if (it[0] != '>') seq.append(it) else {
                 if (name != "") list.add(chopAndWriteSeqeunce(name, seq, binSize, writer))
                 name = it.substring(1).takeWhile { !it.isWhitespace() }
