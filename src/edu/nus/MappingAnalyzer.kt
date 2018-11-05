@@ -4,6 +4,7 @@ import java.io.File
 import htsjdk.samtools.*
 import java.lang.Math.*
 import me.tongfei.progressbar.ProgressBar
+import kotlinx.coroutines.experimental.*
 
 data class Mapping(val chrom: Int, val pos: Int, val contig: String, var alignmentStart: Int, var alignmentEnd: Int, var binCount:Int = 1){
     fun forward() = alignmentEnd-alignmentStart>=0
@@ -120,25 +121,31 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<ChromInfo>) {
         println("[Success] Ratio Score: ${score/(totalPos*totalPos)}")
     }
 
-    private fun analyzeMappingByChrom(records: ArrayList<ArrayList<MappingSet>>):Double {
+    private fun analyzeMappingByChrom(records: ArrayList<ArrayList<MappingSet>>)= runBlocking<Double> {
         val frecords = records.flatten().toTypedArray()
         var score = 0.0
         val pb = ProgressBar("Pairwise Analysis ", frecords.size.toLong())
-        for (i in frecords.indices){
-            pb.step()
-            score += (frecords[i].getBinCount()*binSize).toDouble()*(frecords[i].getBinCount()*binSize)
-            for (j in i+1 until frecords.size) {
-                try {
-                    score += 2*frecords[i].pairwiseDistance(frecords[j])
-                } catch (e: Exception){
-                    println("$i $j")
-                    println(frecords[i])
-                    println(frecords[j])
-                    throw e
+        val deferred = frecords.indices.map { i->
+            async(CommonPool) {
+                var s = (frecords[i].getBinCount()*binSize).toDouble()*(frecords[i].getBinCount()*binSize)
+                for (j in i + 1 until frecords.size) {
+                    try {
+                        s += 2 * frecords[i].pairwiseDistance(frecords[j])
+                    } catch (e: Exception) {
+                        println("$i $j")
+                        println(frecords[i])
+                        println(frecords[j])
+                        throw e
+                    }
                 }
+                s
             }
         }
+        deferred.forEach {
+            pb.step()
+            score += it.await()
+        }
         pb.close()
-        return score
+        score
     }
 }
