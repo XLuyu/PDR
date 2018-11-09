@@ -4,16 +4,17 @@ import me.tongfei.progressbar.ProgressBar
 import java.io.File
 import java.io.OutputStreamWriter
 
-data class ChromInfo(val chrom:String, val length:Int, val binSize:Int, val offset:Int, val binCount:Int)
+data class ChromInfo(val name:String, val length:Int, val binSize:Int, val binCount:Int)
 
 class FastaSplitter(val file: File) {
     private fun chopAndWriteSeqeunce(name:String, seq:StringBuilder, binSize: Int, writer: OutputStreamWriter):ChromInfo {
-        var offset = seq.length % binSize / 2
-        while (offset + binSize <= seq.length){
-            writer.write(">${name}_$offset\n${seq.subSequence(offset, offset + binSize)}\n")
+        var offset = 0
+        while (seq.length - offset > binSize*1.5){
+            writer.write(">${name}_${offset}_${offset+binSize}\n${seq.subSequence(offset, offset + binSize)}\n")
             offset += binSize
         }
-        return ChromInfo(name, seq.length, binSize, seq.length % binSize / 2,seq.length / binSize)
+        writer.write(">${name}_${offset}_${seq.length}\n${seq.subSequence(offset, seq.length)}\n")
+        return ChromInfo(name, seq.length, binSize, offset / binSize + 1)
     }
     fun chopAndWriteFasta(binSize: Int, outfile: File):ArrayList<ChromInfo> {
         val chromNameSet = mutableSetOf<String>()

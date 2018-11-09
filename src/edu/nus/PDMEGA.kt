@@ -8,10 +8,7 @@ import com.github.ajalt.clikt.parameters.types.*
 import me.tongfei.progressbar.ProgressBar
 import java.io.File
 
-class PDMEGA : CliktCommand() {
-    companion object {
-        var binSize = 0
-    }
+object PDMEGA : CliktCommand() {
     val threads by option(help = "Threads to use, default by the CPU core number").int().default(Runtime.getRuntime().availableProcessors())
     val K by option("-k", help = "bin size").int().default(1000)
 //    val output by option("-o", help = "Output file path").file().default(File("DesirableOut.fasta"))
@@ -19,6 +16,7 @@ class PDMEGA : CliktCommand() {
     val reference by argument(help = "Reference genome").file(exists = true)
     val assembly by argument(help = "Assembly to evaluate").file(exists = true)
     val aligner by option("-a", help = "executable path of aligner (BWA or minimap2), default: bwa").default("bwa")
+    val joinError by option("-e", help = "maximum error for two alignment segment to be jointed, default: 50").int().default(50)
 
     private fun bwa(refBlock: File, totalBin: Int):File {
         val sam = File(tmpDir,"RefToAsm.sam")
@@ -56,9 +54,9 @@ class PDMEGA : CliktCommand() {
         return sam
     }
     override fun run() {
+        println("--- settings ---\n  Thread: $threads\n  Bin size: $K\n  Alignment: $aligner\n  Joint within: $joinError")
         val runtime = kotlin.system.measureTimeMillis {
             tmpDir.mkdirs()
-            PDMEGA.binSize = K
             println("[Info] ====== Reference Breaking ======")
             val refBlock = File(tmpDir,"ReferenceBlock.fasta")
             val refInfo = FastaSplitter(reference).chopAndWriteFasta(K,refBlock)
@@ -76,7 +74,4 @@ class PDMEGA : CliktCommand() {
     }
 }
 
-fun main(args: Array<String>) = PDMEGA().main(if (args.isEmpty()) arrayOf("--help") else args)
-
-// Processed 240000 reads
-// mapped 50000 sequences
+fun main(args: Array<String>) = PDMEGA.main(if (args.isEmpty()) arrayOf("--help") else args)

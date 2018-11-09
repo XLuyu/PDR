@@ -6,25 +6,30 @@ import java.lang.Math.*
 import me.tongfei.progressbar.ProgressBar
 import kotlinx.coroutines.experimental.*
 
-data class Mapping(val chrom: Int, val pos: Int, val contig: String, var alignmentStart: Int, var alignmentEnd: Int, var binCount:Int = 1){
+data class Mapping(val chrom: Int, val start: Int, var end: Int, val contig: String, val alignmentStart: Int, var alignmentEnd: Int){
     fun forward() = alignmentEnd-alignmentStart>=0
+    fun getLength() = end-start
     fun pairwiseDistance(other:Mapping):Double {
         if (chrom==other.chrom && contig!=other.contig) return 0.0
         if (chrom!=other.chrom && contig==other.contig) return 0.0
-        if (chrom!=other.chrom && contig!=other.contig) return binCount.toDouble()*PDMEGA.binSize*other.binCount*PDMEGA.binSize
+        if (chrom!=other.chrom && contig!=other.contig) return this.getLength().toDouble()*other.getLength()
         return PDIntegeral(this,other).getPD()
     }
 }
-class MappingSet(val chrom: Int, val pos: Int): ArrayList<Mapping>() {
-    fun getBinCount() = this[0].binCount
+class MappingSet(): ArrayList<Mapping>() {
+    fun chrom() = this[0].chrom
+    fun start() = this[0].start
+    fun end() = this[0].end
+    fun getLength() = this[0].getLength()
     fun sorted(): MappingSet {
-        java.util.Collections.sort(this, compareBy({it.chrom},{it.pos}))
+        java.util.Collections.sort(this, compareBy({it.contig},{it.alignmentStart}))
         return this
     }
     fun allDownstreams(other:MappingSet): Boolean {
         if (this.size!=other.size) return false
         for ( i in 0 until this.size){
-            if (this[i].forward()!=other[i].forward() || abs(this[i].alignmentEnd-other[i].alignmentStart)>50) return false
+            if (this[i].end!=other[i].start) return false
+            if (this[i].forward()!=other[i].forward() || abs(this[i].alignmentEnd-other[i].alignmentStart)>PDMEGA.joinError) return false
         }
         return true
     }
@@ -32,7 +37,7 @@ class MappingSet(val chrom: Int, val pos: Int): ArrayList<Mapping>() {
         if (!allDownstreams(other)) return false
         for ( i in 0 until this.size){
             this[i].alignmentEnd = other[i].alignmentEnd
-            this[i].binCount += 1
+            this[i].end = other[i].end
         }
         return true
     }
@@ -51,7 +56,7 @@ class BamFileReader(File: File, refInfo: ArrayList<ChromInfo>,
                     }){
     private val bamFile = SamReaderFactory.makeDefault().open(File)
     private val iterator = bamFile.iterator()
-    private val chromToIdx = refInfo.mapIndexed { index: Int, chromInfo: ChromInfo -> Pair(chromInfo.chrom,index) }.toMap()
+    private val chromToIdx = refInfo.mapIndexed { index: Int, chromInfo: ChromInfo -> Pair(chromInfo.name,index) }.toMap()
     private var chromIdx = -1
     private var pos = -1
     private var next:Mapping? = getNext()
@@ -59,34 +64,33 @@ class BamFileReader(File: File, refInfo: ArrayList<ChromInfo>,
         while (true){
             if (!iterator.hasNext()) return null
             val record = iterator.next()
-            val splitAt = record.readName.lastIndexOf('_')
-            if (splitAt==-1) println(record.toString())
-            val chrom = record.readName.substring(0,splitAt)
-            val posString = record.readName.substring(splitAt+1)
-            val pos = posString.toInt()
-            val idx = chromToIdx[chrom]!!
-            if (idx>this.chromIdx || idx==this.chromIdx && pos>=this.pos) else throw Exception("Generated Sam file isn't ordered by queryname!")
+            val tokens = record.readName.split("_")
+            val (start,end) = tokens.takeLast(2).map { it.toInt() }
+            val idx = chromToIdx[tokens.dropLast(2).joinToString("_")]!!
+            if (idx>this.chromIdx || idx==this.chromIdx && start>=this.pos) else throw Exception("Generated Sam file isn't ordered by queryname!")
             this.chromIdx = idx
-            this.pos = pos
+            this.pos = start
             if (filter(record))
-                return Mapping(idx, pos, record.contig,
+                return Mapping(idx, start, end, record.contig,
                         if (record.readNegativeStrandFlag) record.alignmentEnd else record.alignmentStart,
                         if (record.readNegativeStrandFlag) record.alignmentStart else record.alignmentEnd)
         }
     }
     fun hasNextReadMappings() = next!=null
     fun getNextReadMappingSet(): MappingSet {
-        val ms = MappingSet(next!!.chrom, next!!.pos)
+        val ms = MappingSet()
         do {
             ms.add(next!!)
             next = getNext()
-        } while (next!=null && next!!.chrom==ms.chrom && next!!.pos==ms.pos)
+        } while (next!=null && next!!.chrom==ms.chrom() && next!!.start==ms.start())
         return ms.sorted()
     }
     fun getAllReadMappings(): ArrayList<MappingSet> {
         val all = ArrayList<MappingSet>()
-        while (hasNextReadMappings())
-            all.add(getNextReadMappingSet())
+        while (hasNextReadMappings()){
+            val ms = getNextReadMappingSet()
+            if (all.isNotEmpty() && all.last().extendDownstreamsBy(ms)) else all.add(ms)
+        }
         return all
     }
     fun getReadMappingByChrom(): ArrayList<MappingSet> {
@@ -106,19 +110,19 @@ class BamFileReader(File: File, refInfo: ArrayList<ChromInfo>,
     }
 }
 class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<ChromInfo>) {
-    private val binSize = PDMEGA.binSize
+    private val binSize = PDMEGA.K
     private val bam = BamFileReader(bwaSam, refInfo)
     fun run() {
         val records = bam.getAllByChrom()
-        println("[Info] load ${records.size} appropriate mappings from SAM file")
+//        println("[Info] load ${records.size} appropriate mappings from SAM file")
         for ( chrom in records){
-            println("[Info] chromosome ${refInfo[chrom[0].chrom]} has ${chrom.size} mapping segments " +
-                    "(%.2f%% covered)".format(chrom.sumBy { it[0].binCount }.toDouble() * binSize * 100 / refInfo[chrom[0].chrom].length))
+            println("[Info] chromosome ${refInfo[chrom[0].chrom()]} has ${chrom.size} mapping segments " +
+                    "(%.2f%% covered)".format(chrom.sumBy { it.getLength() }.toDouble() * 100 / refInfo[chrom[0].chrom()].length))
         }
         val score = analyzeMappingByChrom(records)
-        val totalPos = refInfo.sumByDouble { it.binCount*binSize.toDouble() }
+        val totalPos = refInfo.sumByDouble { it.length.toDouble() }
         println("[Success] Absolute Score: $score")
-        println("[Success] Ratio Score: ${score/(totalPos*totalPos)}")
+        println("[Success] Ratio Score: ${score/totalPos/totalPos}")
     }
 
     private fun analyzeMappingByChrom(records: ArrayList<ArrayList<MappingSet>>)= runBlocking<Double> {
@@ -127,7 +131,7 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<ChromInfo>) {
         val pb = ProgressBar("Pairwise Analysis ", frecords.size.toLong())
         val deferred = frecords.indices.map { i->
             async(CommonPool) {
-                var s = (frecords[i].getBinCount()*binSize).toDouble()*(frecords[i].getBinCount()*binSize)
+                var s = (frecords[i].getLength()).toDouble()*(frecords[i].getLength())
                 for (j in i + 1 until frecords.size) {
                     try {
                         s += 2 * frecords[i].pairwiseDistance(frecords[j])

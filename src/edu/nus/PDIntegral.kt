@@ -4,9 +4,9 @@ import org.apache.commons.math3.complex.*
 
 class PDIntegeral(var l1:Double, val l2:Double, val d1:Double, val d2:Double, val I:Int){
     constructor(A:Mapping, B:Mapping): this(
-            l1 = A.binCount*PDMEGA.binSize.toDouble(),
-            l2 = B.binCount*PDMEGA.binSize.toDouble(),
-            d1 = B.pos-A.pos.toDouble(),
+            l1 = A.getLength().toDouble(),
+            l2 = B.getLength().toDouble(),
+            d1 = B.start-A.start.toDouble(),
             d2 = (if (B.forward()==A.forward()) 1 else -1)*(B.alignmentStart-A.alignmentStart).toDouble(),
             I = if (B.forward()==A.forward()) 1 else -1
             ) { }
@@ -18,6 +18,7 @@ class PDIntegeral(var l1:Double, val l2:Double, val d1:Double, val d2:Double, va
     operator fun Complex.plus(c:Double) = this.add(c)!!
     operator fun Complex.minus(c:Double) = this.subtract(c)!!
     private fun log(x:Double) = Complex(x).log()
+    private fun Complex.Izero() { if (abs(imaginary)>abs(real)/1000000+0.2 || real.isNaN()) throw Exception("Integral error: $real,$imaginary") }
     private fun integeralRect(y:Double, Y:Double, x:Double, X:Double, d:Double, D:Double, Id:Double, ID:Double, sign:Double):Double {
       // integrate((T*(a+L*y-x)/(b+K*y-x)), (x,q,p),(y,w,v))
       val (q,p,w,v)=listOf(x,X,y,Y)
@@ -30,7 +31,7 @@ class PDIntegeral(var l1:Double, val l2:Double, val d1:Double, val d2:Double, va
         + 2*(b - p)*(-2*K*a + K*b + K*p + L*b - L*p)*(log(2*K*(K*v + b - p)) - log(2*K*(K*w + b - p)))
         - 2*(b - q)*(-2*K*a + K*b + K*q + L*b - L*q)*(log(2*K*(K*v + b - q)) - log(2*K*(K*w + b - q)))
         ).divide(4*sign)
-        if (abs(s.imaginary)>abs(s.real)/1000000+0.1 || s.real.isNaN()) throw Exception("Integral error")
+        s.Izero()
         return s.real
     }
     private fun integeral11(y:Double, Y:Double, x:Double, X:Double, d:Double, D:Double, sign:Double):Double {
@@ -42,7 +43,7 @@ class PDIntegeral(var l1:Double, val l2:Double, val d1:Double, val d2:Double, va
                 - (a - b) * (v - w) * (log(p - b) + 1.0)
                 + (a - b) * (b - q) * (log(b - q + v) - log(b - q + w))
                 )
-        if (abs(s.imaginary)>abs(s.real)/1000000+0.1 || s.real.isNaN()) throw Exception("Integral error")
+        s.Izero()
         return sign*s.real
     }
     private fun integeral1_1(y:Double, Y:Double, x:Double, X:Double, d:Double, D:Double, sign:Double):Double {
@@ -89,7 +90,7 @@ class PDIntegeral(var l1:Double, val l2:Double, val d1:Double, val d2:Double, va
                 + (a - q)*(b - q)*(log(b - q + v) - log(b - q + w))
                 + (b - p)*(-2*a + b + p)*(log(2*b - 2*p + 4*v) - log(2*b - 2*p + 4*w)).divide(4.0)
                 )
-        if (abs(s.imaginary)>abs(s.real)/1000000+0.1 || s.real.isNaN()) throw Exception("Integral error")
+        s.Izero()
         return sign*s.real
     }
     private fun integral11doubleY(y:Double, Y:Double, x:Double, X:Double, d:Double, D:Double, sign:Double):Double {
@@ -97,7 +98,7 @@ class PDIntegeral(var l1:Double, val l2:Double, val d1:Double, val d2:Double, va
         val (q,p,w,v)=listOf(x,X,y,Y)
         val (a,b)=listOf(d,D)
         val s = (v - w)*(p - q - (a - b)*log(-b + p) + (a - b)*log(-b + q))
-        if (abs(s.imaginary)>abs(s.real)/1000000+0.1 || s.real.isNaN()) throw Exception("Integral error")
+        s.Izero()
         return sign*s.real
     }
     fun getPD():Double{
@@ -148,6 +149,6 @@ class PDIntegeral(var l1:Double, val l2:Double, val d1:Double, val d2:Double, va
 
 }
 fun main(args: Array<String>) {
-    val a = PDIntegeral(4000.0,4000.0,4000.0,4000.0,-1)
+    val a = PDIntegeral(1000.0,6759000.0,61755000.0,-5658332.0,1)
     println(a.getPD())
 }
