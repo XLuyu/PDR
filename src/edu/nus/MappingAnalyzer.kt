@@ -5,7 +5,6 @@ import htsjdk.samtools.*
 import java.lang.Math.*
 import me.tongfei.progressbar.ProgressBar
 import kotlinx.coroutines.*
-import kotlin.coroutines.CoroutineContext
 
 data class Mapping(val chrom: Int, val start: Int, var end: Int, val contig: String, val alignmentStart: Int, var alignmentEnd: Int){
     fun forward() = alignmentEnd-alignmentStart>=0
@@ -30,7 +29,7 @@ class MappingSet(): ArrayList<Mapping>() {
         if (this.size!=other.size) return false
         for ( i in 0 until this.size){
             if (this[i].end!=other[i].start) return false
-            if (this[i].forward()!=other[i].forward() || abs(this[i].alignmentEnd-other[i].alignmentStart)>PDMEGA.joinError) return false
+            if (this[i].forward()!=other[i].forward() || abs(this[i].alignmentEnd+1-other[i].alignmentStart)>PDMEGA.joinError) return false
         }
         return true
     }
@@ -51,13 +50,13 @@ class MappingSet(): ArrayList<Mapping>() {
         return best
     }
 }
-class BamFileReader(File: File, refInfo: ArrayList<ChromInfo>,
+class BamFileReader(File: File, refInfo: ArrayList<Chromosome>,
                     private val filter: (SAMRecord) -> Boolean = { record:SAMRecord ->
                         !record.readUnmappedFlag  && record.cigarString.all { it in "0123456789MDI=" } //&& record.mappingQuality>10
                     }){
     private val bamFile = SamReaderFactory.makeDefault().open(File)
     private val iterator = bamFile.iterator()
-    private val chromToIdx = refInfo.mapIndexed { index: Int, chromInfo: ChromInfo -> Pair(chromInfo.name,index) }.toMap()
+    private val chromToIdx = refInfo.mapIndexed { index: Int, chromInfo: Chromosome -> Pair(chromInfo.name,index) }.toMap()
     private var chromIdx = -1
     private var pos = -1
     private var next:Mapping? = getNext()
@@ -110,18 +109,21 @@ class BamFileReader(File: File, refInfo: ArrayList<ChromInfo>,
         return all
     }
 }
-class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<ChromInfo>) {
+class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<Chromosome>) {
     private val binSize = PDMEGA.K
     private val bam = BamFileReader(bwaSam, refInfo)
     fun run() {
+        val totalPos = refInfo.sumByDouble { it.payload.toDouble() }
+        val minLengthToReport = if (PDMEGA.reportLength<0) totalPos*-PDMEGA.reportLength/100 else PDMEGA.reportLength.toDouble()
         val records = bam.getAllByChrom()
-//        println("[Info] load ${records.size} appropriate mappings from SAM file")
         for ( chrom in records){
-            println("[Info] chromosome ${refInfo[chrom[0].chrom()]} has ${chrom.size} mapping segments " +
-                    "(%.2f%% covered)".format(chrom.sumBy { it.getLength() }.toDouble() * 100 / refInfo[chrom[0].chrom()].length))
+            val ref = refInfo[chrom[0].chrom()]
+            if (ref.payload>minLengthToReport)
+            println("[Info] $ref " + "(dropped %.2f%%)\t".format((ref.length-ref.payload).toDouble() * 100 / ref.length) +
+                    "${chrom.size} Mapping segments " +
+                    "(%.2f%% payload covered)".format(chrom.sumBy { it.getLength() }.toDouble() * 100 / ref.payload))
         }
         val score = analyzeMappingByChrom(records)
-        val totalPos = refInfo.sumByDouble { it.length.toDouble() }
         println("[Success] Absolute Score: $score")
         println("[Success] Ratio Score: ${score/totalPos/totalPos}")
     }

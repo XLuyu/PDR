@@ -10,13 +10,14 @@ import java.io.File
 
 object PDMEGA : CliktCommand() {
     val threads by option(help = "Threads to use, default by the CPU core number").int().default(Runtime.getRuntime().availableProcessors())
-    val K by option("-k", help = "bin size").int().default(1000)
+    val K by option("-k", help = "Bin size").int().default(1000)
 //    val output by option("-o", help = "Output file path").file().default(File("DesirableOut.fasta"))
     val tmpDir: File by option("-d", help = "Temporary folder for intermediate results").file(exists = false).default(File("PDMEGATmp"))
     val reference by argument(help = "Reference genome").file(exists = true)
     val assembly by argument(help = "Assembly to evaluate").file(exists = true)
-    val aligner by option("-a", help = "executable path of aligner (BWA or minimap2), default: bwa").default("bwa")
-    val joinError by option("-e", help = "maximum error for two alignment segment to be jointed, default: 50").int().default(1)
+    val aligner by option("-a", help = "Executable path of aligner (BWA or minimap2), default: bwa").default("bwa")
+    val joinError by option("-e", help = "Maximum error for two alignment segment to be jointed [default: 50]").int().default(0)
+    val reportLength by option("-m", help = "Minimum chromosome length (in bp) to summarize and report. This doesn't effect result. [default: 1% genome]").int().default(-1)
 
     private fun bwa(refBlock: File, totalBin: Int):File {
         val sam = File(tmpDir,"RefToAsm.sam")
