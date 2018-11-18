@@ -4,7 +4,8 @@ import java.io.File
 import htsjdk.samtools.*
 import java.lang.Math.*
 import me.tongfei.progressbar.ProgressBar
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
+import kotlin.coroutines.CoroutineContext
 
 data class Mapping(val chrom: Int, val start: Int, var end: Int, val contig: String, val alignmentStart: Int, var alignmentEnd: Int){
     fun forward() = alignmentEnd-alignmentStart>=0
@@ -130,7 +131,7 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<ChromInfo>) {
         var score = 0.0
         val pb = ProgressBar("Pairwise Analysis ", frecords.size.toLong())
         val deferred = frecords.indices.map { i->
-            async(CommonPool) {
+            async(kotlinx.coroutines.Dispatchers.Default) {
                 var s = (frecords[i].getLength()).toDouble()*(frecords[i].getLength())
                 for (j in i + 1 until frecords.size) {
                     try {

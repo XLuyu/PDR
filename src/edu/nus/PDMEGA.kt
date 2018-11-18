@@ -16,7 +16,7 @@ object PDMEGA : CliktCommand() {
     val reference by argument(help = "Reference genome").file(exists = true)
     val assembly by argument(help = "Assembly to evaluate").file(exists = true)
     val aligner by option("-a", help = "executable path of aligner (BWA or minimap2), default: bwa").default("bwa")
-    val joinError by option("-e", help = "maximum error for two alignment segment to be jointed, default: 50").int().default(50)
+    val joinError by option("-e", help = "maximum error for two alignment segment to be jointed, default: 50").int().default(1)
 
     private fun bwa(refBlock: File, totalBin: Int):File {
         val sam = File(tmpDir,"RefToAsm.sam")
