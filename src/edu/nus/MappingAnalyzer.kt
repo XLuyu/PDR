@@ -29,7 +29,7 @@ class MappingSet(): ArrayList<Mapping>() {
         if (this.size!=other.size) return false
         for ( i in 0 until this.size){
             if (this[i].end!=other[i].start) return false
-            if (this[i].forward()!=other[i].forward() || abs(this[i].alignmentEnd+1-other[i].alignmentStart)>PDMEGA.joinError) return false
+            if (this[i].forward()!=other[i].forward() || abs(this[i].alignmentEnd-other[i].alignmentStart)>PDMEGA.joinError) return false
         }
         return true
     }
@@ -73,7 +73,7 @@ class BamFileReader(File: File, refInfo: ArrayList<Chromosome>,
             if (filter(record))
                 return Mapping(idx, start, end, record.contig,
                         if (record.readNegativeStrandFlag) record.alignmentEnd else record.alignmentStart,
-                        if (record.readNegativeStrandFlag) record.alignmentStart else record.alignmentEnd)
+                        if (record.readNegativeStrandFlag) record.alignmentStart-1 else record.alignmentEnd+1)
         }
     }
     fun hasNextReadMappings() = next!=null
@@ -116,6 +116,7 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<Chromosome>) {
         val totalPos = refInfo.sumByDouble { it.payload.toDouble() }
         val minLengthToReport = if (PDMEGA.reportLength<0) totalPos*-PDMEGA.reportLength/100 else PDMEGA.reportLength.toDouble()
         val records = bam.getAllByChrom()
+        outputAlignment(records)
         for ( chrom in records){
             val ref = refInfo[chrom[0].chrom()]
             if (ref.payload>minLengthToReport)
@@ -127,7 +128,18 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<Chromosome>) {
         println("[Success] Absolute Score: $score")
         println("[Success] Ratio Score: ${score/totalPos/totalPos}")
     }
-
+    private fun outputAlignment(records: ArrayList<ArrayList<MappingSet>>) {
+        val writer=File(PDMEGA.tmpDir,"MultiAlignment.tab").writer()
+        for (chrom in records){
+            for (i in chrom){
+                writer.write("${i.chrom()}\t${i.start()}\t${i.end()}\t${i.size}\n")
+                for (j in i){
+                    writer.write("${j.contig}\t${j.alignmentStart}\t${j.alignmentEnd}\n")
+                }
+            }
+        }
+        writer.close()
+    }
     private fun analyzeMappingByChrom(records: ArrayList<ArrayList<MappingSet>>)= runBlocking<Double> {
         val frecords = records.flatten().toTypedArray()
         var score = 0.0
