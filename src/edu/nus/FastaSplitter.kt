@@ -12,7 +12,7 @@ class FastaSplitter(val file: File) {
         var dropped = 0
         var offset = 0
         while (offset < seq.length){
-            while (offset<seq.length && seq[offset]=='N') offset++
+            while (offset<seq.length && seq[offset] in "Nn") offset++
             if (offset>=seq.length) break
             var nextN = seq.indexOf('N',offset,true)
             if (nextN==-1) nextN = seq.length
