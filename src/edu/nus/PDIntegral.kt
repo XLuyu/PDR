@@ -7,7 +7,7 @@ class PDIntegeral(var l1:Double, val l2:Double, val d1:Double, val d2:Double, va
             l1 = A.getLength().toDouble(),
             l2 = B.getLength().toDouble(),
             d1 = B.start-A.start.toDouble(),
-            d2 = (if (B.forward()==A.forward()) 1 else -1)*(B.alignmentStart-A.alignmentStart).toDouble(),
+            d2 = (if (A.forward()) 1 else -1)*(B.alignmentStart-A.alignmentStart).toDouble(),
             I = if (B.forward()==A.forward()) 1 else -1
             ) { }
     operator fun Double.plus(c:Complex) = Complex(this).add(c)!!
@@ -149,6 +149,6 @@ class PDIntegeral(var l1:Double, val l2:Double, val d1:Double, val d2:Double, va
 
 }
 fun main(args: Array<String>) {
-    val a = PDIntegeral(1000.0,6759000.0,61755000.0,-5658332.0,1)
+    val a = PDIntegeral(1000.0,5000.0,2000.0,-2000.0,1)
     println(a.getPD())
 }

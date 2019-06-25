@@ -125,6 +125,7 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<Chromosome>) {
                     "(%.2f%% payload covered)".format(chrom.sumBy { it.getLength() }.toDouble() * 100 / ref.payload))
         }
         val score = analyzeMappingByChrom(records)
+        println("[Success] Genome payload: $totalPos")
         println("[Success] Absolute Score: $score")
         println("[Success] Ratio Score: ${score/totalPos/totalPos}")
     }
@@ -145,17 +146,10 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<Chromosome>) {
         var score = 0.0
         val pb = ProgressBar("Pairwise Analysis ", frecords.size.toLong())
         val deferred = frecords.indices.map { i->
-            async(kotlinx.coroutines.Dispatchers.Default) {
+            async(Dispatchers.Default) {
                 var s = (frecords[i].getLength()).toDouble()*(frecords[i].getLength())
                 for (j in i + 1 until frecords.size) {
-                    try {
-                        s += 2 * frecords[i].pairwiseDistance(frecords[j])
-                    } catch (e: Exception) {
-                        println("$i $j")
-                        println(frecords[i])
-                        println(frecords[j])
-                        throw e
-                    }
+                    s += 2 * frecords[i].pairwiseDistance(frecords[j])
                 }
                 s
             }
