@@ -20,14 +20,16 @@ java -jar PDRi.jar [Options] <reference genome> <assembly>
 
 Options:
   --threads INT  Threads to use [default: CPU core]
-  -k INT         Bin size [default: 1000]
-  -d PATH        Temporary folder for intermediate results
+  -k INT         Block size [default: 1000]
+  -d PATH        Temporary folder for intermediate files [default: PDRTmp]
   -a TEXT        Executable path of aligner (BWA or minimap2) [default: bwa]
-  -e INT         Maximum error for two alignment segment to be jointed
+  -e INT         Maximum offset for two alignment segment to be jointed
                  [default: 0]
-  -m INT         Minimum chromosome length (in bp) to summarize and report.
-                 This doesn't effect result. [default: 1% genome]
+  -m INT         Minimum chromosome length (in bp) to summarize and report
+                 alignment statistics. This doesn't change PDR result.
+                 [default: 1% genome]
   -h, --help     Show this message and exit
+
 ```
 
 ## FAQ
