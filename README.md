@@ -7,7 +7,7 @@ java -jar PDRi.jar reference.fasta assembly.fasta
 
 ## Introduction
 
-**PDR** (**P**airwise **D**istance **R**econstuction) a genome assembly evaluation metric. It derives from a common concern in genetic studies, and takes completeness, contiguity, and correctness into consideration. PDRi is a implementation of it by integral.
+**PDR** (**P**airwise **D**istance **R**econstuction) is a genome assembly evaluation metric. It derives from a common concern in genetic studies, and takes completeness, contiguity, and correctness into consideration. PDRi is a implementation of it by integral.
 
 ## Installation
 
