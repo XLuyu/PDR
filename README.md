@@ -40,7 +40,7 @@ By default, PDRi tries to invoke BWA in PATH. If there is no BWA in PATH or you 
 
 #### Q: PDRi runs too slowly on large genome, how to accelerate it?
 
-For large genome, bwa index building may cost a few hours. PDRi also supports Minimap2 as aligner. It is much faster than BWA without explicit index building, but its alignment precision is slightly lower. For rough test, you may want to use Minimap2 to replace BWA.  
+For large genome, BWA index building may cost a few hours. PDRi also supports Minimap2 as aligner. It is much faster than BWA without explicit index building, but its alignment precision is slightly lower. For rough test, you may want to use Minimap2 to replace BWA.  
  
 ## Citation
 To be published
