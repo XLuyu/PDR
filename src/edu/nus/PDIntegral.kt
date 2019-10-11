@@ -149,6 +149,7 @@ class PDIntegeral(var l1:Double, val l2:Double, val d1:Double, val d2:Double, va
 
 }
 fun main(args: Array<String>) {
-    val a = PDIntegeral(1000.0,5000.0,2000.0,-2000.0,1)
-    println(a.getPD())
+    val A = Mapping(0,0,1000,"0",2000,1000)
+    val B = Mapping(0,1000,2000,"0",1000,0)
+    println(A.pairwiseDistance(B))
 }

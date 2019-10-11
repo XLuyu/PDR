@@ -11,6 +11,7 @@ import java.io.File
 object PDMEGA : CliktCommand() {
     val threads by option(help = "Threads to use [default: CPU core]").int().default(Runtime.getRuntime().availableProcessors())
     val K by option("-k", help = "Bin size [default: 1000]").int().default(1000)
+//    val cc50 by option(help = "calculate CC50 [default: false]").flag()
 //    val output by option("-o", help = "Output file path").file().default(File("DesirableOut.fasta"))
     val tmpDir: File by option("-d", help = "Temporary folder for intermediate results").file(exists = false).default(File("PDMEGATmp"))
     val reference by argument(help = "Reference genome").file(exists = true)

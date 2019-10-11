@@ -15,8 +15,12 @@ data class Mapping(val chrom: Int, val start: Int, var end: Int, val contig: Str
         if (chrom!=other.chrom && contig!=other.contig) return this.getLength().toDouble()*other.getLength()
         return PDIntegeral(this,other).getPD()
     }
+    fun cc50(other: Mapping, threshold: Int): Long {
+        if (contig!=other.contig) return 0L
+        return CC50Sigma(this, other, threshold).getCC50().toLong()
+    }
 }
-class MappingSet(): ArrayList<Mapping>() {
+class MappingSet: ArrayList<Mapping>() {
     fun chrom() = this[0].chrom
     fun start() = this[0].start
     fun end() = this[0].end
@@ -25,7 +29,7 @@ class MappingSet(): ArrayList<Mapping>() {
         java.util.Collections.sort(this, compareBy({it.contig},{it.alignmentStart}))
         return this
     }
-    fun allDownstreams(other:MappingSet): Boolean {
+    private fun allDownstreams(other:MappingSet): Boolean {
         if (this.size!=other.size) return false
         for ( i in 0 until this.size){
             if (this[i].end!=other[i].start) return false
@@ -48,6 +52,19 @@ class MappingSet(): ArrayList<Mapping>() {
                 best = max(best,i.pairwiseDistance(j))
         }
         return best
+    }
+    fun cc50(other: MappingSet, threshold: Int): Pair<Long, Long> {
+        if (chrom()!=other.chrom()) return Pair(0L,0L)
+        if (start()>other.start()) return other.cc50(this, threshold)
+        val left = max(start()+threshold, other.start())
+        val right = min(end()+threshold, other.end())
+        val pairnum = max(0L,right-left.toLong())
+        var best = 0L
+        for (i in this){
+            for (j in other)
+                best = max(best, i.cc50(j, threshold))
+        }
+        return Pair(best,pairnum)
     }
 }
 class BamFileReader(File: File, refInfo: ArrayList<Chromosome>,
@@ -125,9 +142,40 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<Chromosome>) {
                     "(%.2f%% payload covered)".format(chrom.sumBy { it.getLength() }.toDouble() * 100 / ref.payload))
         }
         val score = analyzeMappingByChrom(records)
-        println("[Success] Genome payload: $totalPos")
-        println("[Success] Absolute Score: $score")
-        println("[Success] Ratio Score: ${score/totalPos/totalPos}")
+        println("====== Finished ======\n" +
+                "Genome payload: $totalPos\n" +
+                "PDR Total:      $score\n" +
+                "PDR Ratio:      ${score/totalPos/totalPos}")
+//        if (!PDMEGA.cc50) return
+//        val cc50 = computeCC50(records)
+//        println("CC50:           $cc50")
+    }
+    private fun computeCC50(records: ArrayList<ArrayList<MappingSet>>) = runBlocking {
+        operator fun Pair<Long, Long>.plus(other: Pair<Long, Long>) = Pair(first+other.first, second+other.second)
+        val frecords = records.flatten().toTypedArray()
+        var lowerbound = 0
+        var upperbound = refInfo.map { it.length }.max()!!
+        val pb = ProgressBar("CC50 binary search", Math.ceil(Math.log(upperbound-lowerbound.toDouble())/Math.log(2.0)).toLong())
+        while (lowerbound+2<=upperbound){
+            var score = Pair(0L, 0L)
+            val mid = (upperbound+lowerbound)/2
+            val deferred = frecords.indices.map { i->
+                async(Dispatchers.Default) {
+                    val self = max(frecords[i].getLength().toLong()-mid, 0L)
+                    var ratio = Pair(self, self)
+                    for (j in i + 1 until frecords.size) {
+                        ratio += frecords[i].cc50(frecords[j], mid)
+                    }
+                    ratio
+                }
+            }
+            deferred.forEach { score += it.await() }
+            println("\n($lowerbound, $mid, $upperbound) Ratio: ${score.first}/${score.second}(${score.first.toDouble()/score.second})")
+            pb.step()
+            if (score.first.toDouble()/score.second > 0.5) lowerbound = mid else upperbound = mid
+        }
+        pb.close()
+        upperbound
     }
     private fun outputAlignment(records: ArrayList<ArrayList<MappingSet>>) {
         val writer=File(PDMEGA.tmpDir,"MultiAlignment.tab").writer()
@@ -141,10 +189,9 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<Chromosome>) {
         }
         writer.close()
     }
-    private fun analyzeMappingByChrom(records: ArrayList<ArrayList<MappingSet>>)= runBlocking<Double> {
+    private fun analyzeMappingByChrom(records: ArrayList<ArrayList<MappingSet>>)= runBlocking {
         val frecords = records.flatten().toTypedArray()
         var score = 0.0
-        val pb = ProgressBar("Pairwise Analysis ", frecords.size.toLong())
         val deferred = frecords.indices.map { i->
             async(Dispatchers.Default) {
                 var s = (frecords[i].getLength()).toDouble()*(frecords[i].getLength())
@@ -154,6 +201,7 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<Chromosome>) {
                 s
             }
         }
+        val pb = ProgressBar("PDR Pairwise Analysis ", frecords.size.toLong())
         deferred.forEach {
             pb.step()
             score += it.await()
