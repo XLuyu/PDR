@@ -38,7 +38,7 @@ Options:
 
 By default, PDRi tries to invoke BWA in PATH. If there is no BWA in PATH or you want to use specific BWA version, please provide executable BWA path by option `-a`, e.g. `java -jar PDRi.jar -a /usr/bin/bwa reference.fasta assembly.fasta `
 
-##### Q: PDRi runs too slowly on large genome, how to accelerate it?
+#### Q: PDRi runs too slowly on large genome, how to accelerate it?
 
 For large genome, bwa index building may cost a few hours. PDRi also supports Minimap2 as aligner. It is much faster than BWA without explicit index building, but its alignment precision is slightly lower. For rough test, you may want to use Minimap2 to replace BWA.  
  
