@@ -13,9 +13,10 @@ object PDMEGA : CliktCommand() {
     val K by option("-k", help = "Block size [default: 1000]").int().default(1000)
 //    val cc50 by option(help = "calculate CC50 [default: false]").flag()
 //    val output by option("-o", help = "Output file path").file().default(File("DesirableOut.fasta"))
-    val tmpDir: File by option("-d", help = "Temporary folder for intermediate files [default: PDRTmp]").file(exists = false).default(File("PDRTmp"))
-    val reference by argument(help = "Reference genome").file(exists = true)
-    val assembly by argument(help = "Assembly to evaluate").file(exists = true)
+    val tmpDir by option("-d", help = "Temporary folder for intermediate files [default: PDRTmp]").file(mustExist = false).default(File("PDRTmp"))
+    val debugTmpDir by option("--debug", help = "Keep temporary folder for debugging purpose").flag(default = false)
+    val reference by argument(help = "Reference genome").file(mustExist = true)
+    val assembly by argument(help = "Assembly to evaluate").file(mustExist = true)
     val aligner by option("-a", help = "Executable path of aligner (BWA or minimap2) [default: bwa]").default("bwa")
     val joinError by option("-e", help = "Maximum offset for two alignment segment to be jointed [default: 0]").int().default(0)
     val reportLength by option("-m", help = "Minimum chromosome length (in bp) to summarize and report alignment statistics. This doesn't change PDR result. [default: 1% genome]").int().default(-1)
@@ -56,23 +57,27 @@ object PDMEGA : CliktCommand() {
         return sam
     }
     override fun run() {
-        println("--- settings ---\n  Thread: $threads\n  Bin size: $K\n  Alignment: $aligner\n  Joint within: $joinError")
+        println("--- settings ---\n  Thread: $threads\n  Bin size: $K\n  Alignment: $aligner\n  Joint within: $joinError\n")
         val runtime = kotlin.system.measureTimeMillis {
             tmpDir.mkdirs()
-            println("[Info] ====== Reference Breaking ======")
+            println("====== Reference Breaking ======")
             val refBlock = File(tmpDir,"ReferenceBlock.fasta")
             val refInfo = FastaSplitter(reference).chopAndWriteFasta(K,refBlock)
             val totalBin = refInfo.sumBy { it.binCount }
-            println("[Info] Successfully finished")
-            println("[Info] ====== Alignment ======")
+            println("[Info] Successfully finished\n")
+            println("====== Alignment ======")
             val sam = if (aligner.endsWith("bwa")) bwa(refBlock, totalBin) else minimap2(refBlock, totalBin)
-            println("[Info] successfully finished")
-            println("[Info] ====== Mapping Analysis ======")
+            println("[Info] successfully finished\n")
+            println("====== Mapping Analysis ======")
             val mappingAnalyzer = MappingAnalyzer(sam, refInfo)
-            mappingAnalyzer.run()
-//          tmpDir.deleteRecursively()
+            val pdr = mappingAnalyzer.run()
+            println("[Info] successfully finished\n")
+            println("====== Result ======")
+            println("PDR = $pdr")
+            println("    = %.2f%%\n".format(pdr*100))
+            if (debugTmpDir) tmpDir.deleteRecursively()
         }
-        println("[Success] elapsed time: ${runtime/60000}m${runtime/1000%60}s")
+        println("Elapsed time: ${runtime/60000}m${runtime/1000%60}s")
     }
 }
 

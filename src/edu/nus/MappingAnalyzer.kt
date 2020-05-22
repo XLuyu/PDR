@@ -129,7 +129,7 @@ class BamFileReader(File: File, refInfo: ArrayList<Chromosome>,
 class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<Chromosome>) {
     private val binSize = PDMEGA.K
     private val bam = BamFileReader(bwaSam, refInfo)
-    fun run() {
+    fun run(): Double {
         val totalPos = refInfo.sumByDouble { it.payload.toDouble() }
         val minLengthToReport = if (PDMEGA.reportLength<0) totalPos*-PDMEGA.reportLength/100 else PDMEGA.reportLength.toDouble()
         val records = bam.getAllByChrom()
@@ -142,10 +142,9 @@ class MappingAnalyzer(bwaSam: File, val refInfo: ArrayList<Chromosome>) {
                     "(%.2f%% payload covered)".format(chrom.sumBy { it.getLength() }.toDouble() * 100 / ref.payload))
         }
         val score = analyzeMappingByChrom(records)
-        println("====== Finished ======\n" +
-                "Genome payload: $totalPos\n" +
-                "PDR Total:      $score\n" +
-                "PDR Ratio:      ${score/totalPos/totalPos}")
+        println("Genome Payload:     $totalPos\n" +
+                "Quality Score Sum:  $score")
+        return score/totalPos/totalPos
 //        if (!PDMEGA.cc50) return
 //        val cc50 = computeCC50(records)
 //        println("CC50:           $cc50")
