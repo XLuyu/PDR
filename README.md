@@ -43,7 +43,7 @@ By default, PDRi tries to invoke BWA in PATH. If there is no BWA in PATH or you 
 For large genome, BWA index building may cost a few hours. PDRi also supports Minimap2 as aligner. It is much faster than BWA without explicit index building, but its alignment precision is slightly lower. For rough test, you may want to use Minimap2 to replace BWA.  
  
 ## Citation
-To be published
+Xie, L., & Wong, L. (2020). PDR: a new genome assembly evaluation metric based on genetics concerns. *Bioinformatics*.
 
 ## Feedback
 If you encounter any problem or have feedback, please feel free to contact me (x86@u.nus.edu). I will try to reply ASAP.
