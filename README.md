@@ -32,6 +32,23 @@ Options:
 
 ```
 
+## Output
+PDRi will display a progress bar with estimated time during its execution. Finally, it will print a result like:
+```
+====== Finished ======
+Genome payload: 2.923725537E9
+PDR Total:      7.8534562466405898E18
+PDR Ratio:      0.9187294255357177
+[Success] elapsed time: 82m4s
+```
+`Genome payload` and `PDR total` are intermediate results for debugging purposes.
+
+`PDR Ratio` is the only useful output. For example, a PDR Ratio = 0.9187294255357177 roughly means: 
+> 91.873% pairs from the reference have correct distances in your assembly.
+
+More generally (but less precisely), this roughly means:
+> 91.873% information from the reference are also found in your assembly.
+
 ## FAQ
 
 #### Q: How to specify BWA?
@@ -43,7 +60,7 @@ By default, PDRi tries to invoke BWA in PATH. If there is no BWA in PATH or you 
 For large genome, BWA index building may cost a few hours. PDRi also supports Minimap2 as aligner. It is much faster than BWA without explicit index building, but its alignment precision is slightly lower. For rough test, you may want to use Minimap2 to replace BWA.  
  
 ## Citation
-Xie, L., & Wong, L. (2020). PDR: a new genome assembly evaluation metric based on genetics concerns. *Bioinformatics*.
+> Xie, L., & Wong, L. (2021). PDR: a new genome assembly evaluation metric based on genetics concerns. Bioinformatics, 37(3), 289-295.
 
 ## Feedback
-If you encounter any problem or have feedback, please feel free to contact me (x86@u.nus.edu). I will try to reply ASAP.
+If you encounter any problem or have feedback, please feel free to contact me (x86@u.nus.edu) or use github issue. I will reply ASAP.
